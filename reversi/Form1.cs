@@ -95,8 +95,8 @@ namespace reversi
             Point vak4 = new Point(Xspeelveld + (cellsize * 3), Yspeelveld + (cellsize * 3));
             speelveld[3, 3] = new Steen(2, vak4, cellsize);
 
-            Point vak5 = new Point(Xspeelveld + (cellsize * 4), Yspeelveld + (cellsize * 2));
-            speelveld[4, 2] = new Steen(1, vak5, cellsize);
+            //Point vak5 = new Point(Xspeelveld + (cellsize * 4), Yspeelveld + (cellsize * 2));
+            //speelveld[4, 2] = new Steen(1, vak5, cellsize);
         }
 
         private void tekengrid(object sender, PaintEventArgs pea)
@@ -141,7 +141,12 @@ namespace reversi
                 //geldige klik
                 if(is_geldige_zet(arraywaarde))
                 {
-                    //zet is geldig dus doe de zet.
+                    //zet is geldig dus doe de zet. 
+                    Point nieuwvak = new Point(e.X, e.Y);
+                    speelveld[arraywaarde.X, arraywaarde.Y] = new Steen(HuidigeSpeler, nieuwvak, cellsize);    
+
+                    // flip stenen
+
                 }
                 else
                 {
@@ -157,10 +162,10 @@ namespace reversi
         private Point bereken_array_coordinaat(int muisX,int muisY)
             // Helperfunctie bij heet bepalen van een geldige klik. 
         {
-            //maak leeg antwoord aan.
+            //gebruik een leeg antwoord.
             Point answer = new Point(0, 0);
 
-            double answerX = ((muisX - 100.00) / 60);
+            double answerX = ((muisX - 100.00) / cellsize);
             if (answerX < 0)
             {
                 answer.X = -1;
@@ -170,7 +175,7 @@ namespace reversi
                 answer.X = (int)answerX;
             }
 
-            double answerY = ((muisY - 200.00) / 60);
+            double answerY = ((muisY - 200.00) / cellsize);
             if (answerY < 0)
             {
                 answer.Y = -1;
@@ -183,13 +188,13 @@ namespace reversi
             return answer;
         }
 
-        
+
         private bool is_geldige_zet(Point gekliktvakje)
         {
             bool geldigeZet = false;
 
+            // check voor een zet horizontaal, links
             int x = 1;
-
             while (gekliktvakje.X - x >= 0
                    && speelveld[gekliktvakje.X - 1, gekliktvakje.Y] != null)
             {
@@ -199,21 +204,95 @@ namespace reversi
                 else
                     x++;
             }
-
-          /* if( gekliktvakje.X-2 >= 0 
-                && speelveld[gekliktvakje.X - 1, gekliktvakje.Y]!= null
-                && speelveld[gekliktvakje.X-1, gekliktvakje.Y].speler != HuidigeSpeler && speelveld[gekliktvakje.X-2, gekliktvakje.Y].speler == HuidigeSpeler)
+            // check voor een zet horizontaal, rechts
+            x = 1;
+            while (gekliktvakje.X + x <= 6 
+                   && speelveld[gekliktvakje.X + 1, gekliktvakje.Y] != null)
             {
-                 return true;
-            } */
-            
+                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X + x + 1, gekliktvakje.Y].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+            // check voor een zet verticaal, omhoog
+            x = 1;
+            while (gekliktvakje.Y - x >= 0  
+                   && speelveld[gekliktvakje.X, gekliktvakje.Y - 1] != null)
+            {
+                if (speelveld[gekliktvakje.X, gekliktvakje.Y - x].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X, gekliktvakje.Y - x - 1].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+            // check voor een zet verticaal, omlaag
+            x = 1;
+            while (gekliktvakje.Y + x <= 6
+                   && speelveld[gekliktvakje.X, gekliktvakje.Y + 1] != null)
+            {
+                if (speelveld[gekliktvakje.X, gekliktvakje.Y + x].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X, gekliktvakje.Y + x + 1].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+            // check diagonaal, ++
+            x = 1;
+            while (gekliktvakje.X + x <= 6
+                   && gekliktvakje.Y + x <= 6
+                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y] != null)
+            {
+                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y + x].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X + x + 1, gekliktvakje.Y + x + 1].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+            // check diagonaal, --
+            x = 1;
+            while (gekliktvakje.X - x >= 0
+                   && gekliktvakje.Y - x >= 0
+                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y - 1] != null)
+            {
+                if (speelveld[gekliktvakje.X - x, gekliktvakje.Y - x].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X - x - 1, gekliktvakje.Y - x - 1].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+            //check diagonaal, +-
+            x = 1;
+            while (gekliktvakje.X + x <= 6 
+                   && gekliktvakje.Y - x >= 0
+                   && speelveld[gekliktvakje.X + 1, gekliktvakje.Y -1] != null)
+            {
+                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y - x].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X + x + 1, gekliktvakje.Y - x - 1].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+            //check diagonaal, -+
+            x = 1;
+            while (gekliktvakje.X - x >= 0
+                   && gekliktvakje.Y + x <= 6
+                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y +1] != null)
+            {
+                if (speelveld[gekliktvakje.X - x, gekliktvakje.Y + x].speler != HuidigeSpeler)
+                    if (speelveld[gekliktvakje.X - x - 1, gekliktvakje.Y + x + 1].speler == HuidigeSpeler)
+                        return true;
+                else
+                    x++;
+            }
+
             return geldigeZet;
         }
 
     }
     public class Steen
     {
-       public int speler;
+        public int speler;
         Point steenlocatie;
         Size steengrootte;
    
@@ -227,11 +306,15 @@ namespace reversi
 
         }
 
+        public void flip_kleur_steen()
+        {
+
+        }
+
         public void kleurSteen(Graphics gr)
             //De methode tekent de stenen op basis van de array-waardes. Deze methode heeft een helperfunctie nodig, om te bepalen op welke coordinaten de 
             // stenen getekend moeten worden.
         {
-
             Brush brush;
             if (speler == 1)
                 brush = new SolidBrush(Color.Red);
@@ -239,7 +322,7 @@ namespace reversi
                 brush = new SolidBrush(Color.Blue);
 
             gr.FillEllipse(brush, steenlocatie.X, steenlocatie.Y, steengrootte.Width, steengrootte.Height);
-            
+           
         }
     }
 }
