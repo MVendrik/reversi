@@ -13,9 +13,11 @@ namespace reversi
     public partial class SpeelReversi : Form
     {
         Label Label_Beurt;
-        Button Knop_Nieuwspel;
+        Button Knop_Help;
         Label Label_RodeSteen;
         Label Label_BlauweSteen;
+
+        private bool Help = false;
 
         const int cellsize = 60;
 
@@ -39,14 +41,14 @@ namespace reversi
             Label_Beurt.Font = new Font("Arial", 12);
             #endregion
 
-            #region knop nieuw spel
-            Knop_Nieuwspel = new Button();
-            Knop_Nieuwspel.Text = "Nieuw spel";
-            Knop_Nieuwspel.Location = new Point(150, 10);
-            Knop_Nieuwspel.Size = new Size(100, 35);
-            Knop_Nieuwspel.Font = new Font("Arial", 10);
-            Knop_Nieuwspel.BackColor = Color.Gray;
-            //NieuwSpel.Click += ;
+            #region knop help
+            Knop_Help = new Button();
+            Knop_Help.Text = "Help";
+            Knop_Help.Location = new Point(150, 10);
+            Knop_Help.Size = new Size(100, 35);
+            Knop_Help.Font = new Font("Arial", 10);
+            Knop_Help.BackColor = Color.LightGray;
+            Knop_Help.Click += Knop_Help_Click;
             #endregion
 
             #region label rode stenen
@@ -68,7 +70,7 @@ namespace reversi
             #endregion
 
             this.Controls.Add(Label_Beurt);
-            this.Controls.Add(Knop_Nieuwspel);
+            this.Controls.Add(Knop_Help);
             this.Controls.Add(Label_RodeSteen);
             this.Controls.Add(Label_BlauweSteen);
 
@@ -76,8 +78,13 @@ namespace reversi
             this.initialiseer_speelveld();
 
             this.Paint += tekengrid;
-            this.Paint += tekenSteen;
             this.MouseClick += controleer_geldige_klik;
+        }
+
+        private void Knop_Help_Click(object sender, EventArgs e)
+        {
+            Help = true;
+            this.Invalidate();
         }
 
         private void initialiseer_speelveld()
@@ -112,15 +119,19 @@ namespace reversi
                     gr.DrawRectangle(linepen, x, y, cellsize, cellsize);
                 }
             }
+            this.tekenSteen(gr);
+
+            if (Help)
+                teken_help(gr);
+
         }
 
-        private void tekenSteen(object sender, PaintEventArgs pea)
+        private void tekenSteen(Graphics gr)
         {
-            Graphics gr = pea.Graphics;
 
-            for (int x=0; x < speelveld.GetLength(0); x++)
+            for (int x = 0; x < speelveld.GetLength(0); x++)
             {
-                for (int y=0; y < speelveld.GetLength(1); y++)
+                for (int y = 0; y < speelveld.GetLength(1); y++)
                 {
                     if (speelveld[x, y] != null)
                     {
@@ -128,6 +139,22 @@ namespace reversi
                     }
                 }
             }
+        }
+
+        private void teken_help(Graphics gr)
+        {
+            for(int x =0; x < speelveld.GetLength(0); x ++)
+                for (int y = 0; y < speelveld.GetLength(1); y++)
+                {
+                    if (is_geldige_zet(new Point(x, y)))
+                    {
+                        if (speelveld[x, y] == null)
+                        {
+                            Pen pen = new Pen(Color.Black);
+                            gr.DrawEllipse(pen, (cellsize * x + Xspeelveld + cellsize / 2), (cellsize * y + Yspeelveld + cellsize / 2), (cellsize / 2), (cellsize / 2));
+                        }
+                    }
+                }
         }
 
         private void controleer_geldige_klik(object sender, MouseEventArgs e)
@@ -138,27 +165,104 @@ namespace reversi
             //kijk of het een geldige klik is
             if(arraywaarde.X>=0 && arraywaarde.X < speelveld.GetLength(0) && arraywaarde.Y>=0 && arraywaarde.Y < speelveld.GetLength(1))
             {
-                //geldige klik
+                //geldige klik, controleer nu geldige zet
                 if(is_geldige_zet(arraywaarde))
                 {
-                    //zet is geldig dus doe de zet. 
-                    Point nieuwvak = new Point(e.X, e.Y);
-                    speelveld[arraywaarde.X, arraywaarde.Y] = new Steen(HuidigeSpeler, nieuwvak, cellsize);    
+                    //zet is geldig dus doe de zet en maak een steen aan.
+                    speelveld[arraywaarde.X, arraywaarde.Y] = new Steen(HuidigeSpeler, new Point((arraywaarde.X*cellsize+Xspeelveld) ,arraywaarde.Y*cellsize + 
+                        Yspeelveld), cellsize);
 
-                    // flip stenen
+                    //check voor elke richting voor het flippen van de stenen.
+                    this.check_and_flip(arraywaarde, -1, 0);
+                    this.check_and_flip(arraywaarde, 0, -1);
+                    this.check_and_flip(arraywaarde, 1, 0);
+                    this.check_and_flip(arraywaarde, 0, 1);
+                    this.check_and_flip(arraywaarde, 1, 1);
+                    this.check_and_flip(arraywaarde, -1, -1);
+                    this.check_and_flip(arraywaarde, -1, 1);
+                    this.check_and_flip(arraywaarde, 1, -1);
+
+                    this.update_steenlabels();
+                    this.einde_beurt();
+                    
 
                 }
                 else
                 {
                     // zet is niet geldig doe niks.
                 }
+               
             }
             else
             {
                 //geen geldige klik
             }
 
+            this.Invalidate();
         }
+        private void einde_beurt()
+        {
+            //update huidige speler
+            if (HuidigeSpeler == 1)
+            {
+                HuidigeSpeler = 2;
+                this.Label_Beurt.Text = "Blauw is aan zet";
+            }
+            else
+            {
+                HuidigeSpeler = 1;
+                this.Label_Beurt.Text = "Rood is aan zet";
+            }
+
+        }
+
+        private void update_steenlabels()
+        {
+            int aantal_rodestenen = 0;
+            int aantal_blauwestenen = 0;
+
+            for (int x = 0; x < speelveld.GetLength(0); x++)
+                for (int y = 0; y < speelveld.GetLength(1); y++)
+                {
+                    if (speelveld[x, y] != null)
+                    {
+                        if (speelveld[x, y].speler == 1)
+                            aantal_rodestenen++;
+                        else
+                            aantal_blauwestenen++;
+
+                    }
+                }
+            Label_BlauweSteen.Text =  aantal_blauwestenen.ToString() + " stenen";
+            Label_RodeSteen.Text = aantal_rodestenen.ToString() + " stenen";
+        }
+
+        private void check_and_flip(Point arraywaarde,int x_richting, int y_richting)
+        {
+            // kijk of de zet in deze richting een valide zet was.
+            if(check_richting(arraywaarde, x_richting, y_richting))
+            {
+                int x = x_richting;
+                int y = y_richting;
+                // als valide zet doe flippen
+                while (arraywaarde.X + x >= 0 && arraywaarde.X + x < speelveld.GetLength(0) &&
+                arraywaarde.Y + y >= 0 && arraywaarde.Y + y < speelveld.GetLength(1) &&
+                speelveld[arraywaarde.X + x, arraywaarde.Y + y] != null)
+                {
+                    //update het vakje
+                    speelveld[arraywaarde.X + x, arraywaarde.Y + y].update_eigenaar(HuidigeSpeler);
+                    //update x en y
+                    x += x_richting;
+                    y += y_richting;
+                }
+            }
+            else
+            {
+                // doe niks
+            }
+
+        }
+
         private Point bereken_array_coordinaat(int muisX,int muisY)
             // Helperfunctie bij heet bepalen van een geldige klik. 
         {
@@ -188,112 +292,68 @@ namespace reversi
             return answer;
         }
 
+        private bool check_richting(Point gekliktvakje, int x_richting, int y_richting)
+            // Functie die gebruikt kan werden om te controleren in welke richting aanliggende stenen staan bij een zet.
+        {
+            int x = x_richting;
+            int y = y_richting;
+            bool is_geldige_zet = false;
+
+            while (gekliktvakje.X + x >= 0 && gekliktvakje.X + x < speelveld.GetLength(0) &&
+                  gekliktvakje.Y + y >= 0 && gekliktvakje.Y + y < speelveld.GetLength(1) &&
+                   speelveld[gekliktvakje.X + x, gekliktvakje.Y + y] != null)
+            {
+                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y + y].speler != HuidigeSpeler)
+                {
+                    if (gekliktvakje.X + x + x_richting >= 0 && gekliktvakje.X + x + x_richting < speelveld.GetLength(0) &&
+                     gekliktvakje.Y + y + y_richting >= 0 && gekliktvakje.Y + y + y_richting < speelveld.GetLength(1) &&
+                     speelveld[gekliktvakje.X + x + x_richting, gekliktvakje.Y + y + y_richting] != null &&
+                     speelveld[gekliktvakje.X + x + x_richting, gekliktvakje.Y + y + y_richting].speler == HuidigeSpeler)
+                    {
+                        return true;
+                    }
+                }
+                x += x_richting;
+                y += y_richting;
+            }
+           
+            return is_geldige_zet;
+        }
+
 
         private bool is_geldige_zet(Point gekliktvakje)
+            // Check met een boolean of de zet geldig is, maakt hierbij gebruikt van check_richting
         {
-            bool geldigeZet = false;
-
-            // check voor een zet horizontaal, links
-            int x = 1;
-            while (gekliktvakje.X - x >= 0
-                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y] != null)
-            {
-                if (speelveld[gekliktvakje.X - x, gekliktvakje.Y].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X - x - 1, gekliktvakje.Y].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            // check voor een zet horizontaal, rechts
-            x = 1;
-            while (gekliktvakje.X + x <= 6 
-                   && speelveld[gekliktvakje.X + 1, gekliktvakje.Y] != null)
-            {
-                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X + x + 1, gekliktvakje.Y].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            // check voor een zet verticaal, omhoog
-            x = 1;
-            while (gekliktvakje.Y - x >= 0  
-                   && speelveld[gekliktvakje.X, gekliktvakje.Y - 1] != null)
-            {
-                if (speelveld[gekliktvakje.X, gekliktvakje.Y - x].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X, gekliktvakje.Y - x - 1].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            // check voor een zet verticaal, omlaag
-            x = 1;
-            while (gekliktvakje.Y + x <= 6
-                   && speelveld[gekliktvakje.X, gekliktvakje.Y + 1] != null)
-            {
-                if (speelveld[gekliktvakje.X, gekliktvakje.Y + x].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X, gekliktvakje.Y + x + 1].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            // check diagonaal, ++
-            x = 1;
-            while (gekliktvakje.X + x <= 6
-                   && gekliktvakje.Y + x <= 6
-                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y] != null)
-            {
-                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y + x].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X + x + 1, gekliktvakje.Y + x + 1].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            // check diagonaal, --
-            x = 1;
-            while (gekliktvakje.X - x >= 0
-                   && gekliktvakje.Y - x >= 0
-                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y - 1] != null)
-            {
-                if (speelveld[gekliktvakje.X - x, gekliktvakje.Y - x].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X - x - 1, gekliktvakje.Y - x - 1].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            //check diagonaal, +-
-            x = 1;
-            while (gekliktvakje.X + x <= 6 
-                   && gekliktvakje.Y - x >= 0
-                   && speelveld[gekliktvakje.X + 1, gekliktvakje.Y -1] != null)
-            {
-                if (speelveld[gekliktvakje.X + x, gekliktvakje.Y - x].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X + x + 1, gekliktvakje.Y - x - 1].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-            //check diagonaal, -+
-            x = 1;
-            while (gekliktvakje.X - x >= 0
-                   && gekliktvakje.Y + x <= 6
-                   && speelveld[gekliktvakje.X - 1, gekliktvakje.Y +1] != null)
-            {
-                if (speelveld[gekliktvakje.X - x, gekliktvakje.Y + x].speler != HuidigeSpeler)
-                    if (speelveld[gekliktvakje.X - x - 1, gekliktvakje.Y + x + 1].speler == HuidigeSpeler)
-                        return true;
-                else
-                    x++;
-            }
-
-            return geldigeZet;
+            if (speelveld[gekliktvakje.X, gekliktvakje.Y] != null)
+                return false;
+            //check naar links horizontaal
+            else if(check_richting(gekliktvakje, -1, 0))
+                return true;
+            else if (check_richting(gekliktvakje, 0, -1))
+                return true;
+            else if (check_richting(gekliktvakje, +1, 0))
+                return true;
+            else if (check_richting(gekliktvakje, 0, +1))
+                return true;
+            else if (check_richting(gekliktvakje, -1, -1))
+                return true;
+            else if (check_richting(gekliktvakje, +1, +1))
+                return true;
+            else if (check_richting(gekliktvakje, -1, +1))
+                return true;
+            else if (check_richting(gekliktvakje, +1, -1))
+                return true;
+            else
+                return false;
+  
         }
+
 
     }
     public class Steen
     {
         public int speler;
-        Point steenlocatie;
+        private Point steenlocatie;
         Size steengrootte;
    
         //constructor
@@ -306,9 +366,10 @@ namespace reversi
 
         }
 
-        public void flip_kleur_steen()
+        public void update_eigenaar(int huidigespeler)
         {
-
+            if (this.speler != huidigespeler)
+                this.speler = huidigespeler;
         }
 
         public void kleurSteen(Graphics gr)
