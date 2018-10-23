@@ -12,6 +12,8 @@ namespace reversi
 {
     public partial class SpeelReversi : Form
     {
+        const int X_Vakjes = 6;
+        const int Y_Vakjes = 6;
         Label Label_Beurt;
         Button Knop_Help;
         Label Label_RodeSteen;
@@ -51,6 +53,16 @@ namespace reversi
             Knop_Help.Click += Knop_Help_Click;
             #endregion
 
+            #region knop nieuw spel
+            Button Knop_NieuwSpel = new Button();
+            Knop_NieuwSpel.Text = "Nieuw spel";
+            Knop_NieuwSpel.Location = new Point(350, 10);
+            Knop_NieuwSpel.Size = new Size(100, 35);
+            Knop_NieuwSpel.Font = new Font("Arial", 10);
+            Knop_NieuwSpel.BackColor = Color.LightGray;
+            Knop_NieuwSpel.Click += Knop_Nieuwspel_Click;
+            #endregion
+
             #region label rode stenen
             Label_RodeSteen = new Label();
             Label_RodeSteen.Text = "2 stenen";
@@ -73,37 +85,61 @@ namespace reversi
             this.Controls.Add(Knop_Help);
             this.Controls.Add(Label_RodeSteen);
             this.Controls.Add(Label_BlauweSteen);
+            this.Controls.Add(Knop_NieuwSpel);
 
-            this.speelveld = new Steen[6, 6];
+            this.speelveld = new Steen[X_Vakjes, Y_Vakjes];
             this.initialiseer_speelveld();
 
+            // events koppelen aan methodes.
             this.Paint += tekengrid;
             this.MouseClick += controleer_geldige_klik;
         }
 
+        private void Knop_Nieuwspel_Click(object sender, EventArgs e)
+        {
+            this.speel_nieuw_spel();
+            this.Invalidate();
+        }
+
+        private void speel_nieuw_spel()
+            // reset alle waardes om een nieuw speelveld te tekenen. 
+        {
+            speelveld = new Steen[X_Vakjes, Y_Vakjes];
+            Help = false;
+            HuidigeSpeler = 1;
+            this.einde_beurt();
+            this.initialiseer_speelveld();
+            this.update_steenlabels();
+        }
+
         private void Knop_Help_Click(object sender, EventArgs e)
         {
-            Help = true;
-            this.Invalidate();
+            if (Help ==false)
+                Help = true;
+            else
+                Help = false;
+
+            this.Invalidate(); // teken opnieuw
         }
 
         private void initialiseer_speelveld()
             // Het speelveld krijgt standaard vier speelstenen aan het begin. Initialiseer deze in deze methode. 
         {
-            Point vak1 = new Point(Xspeelveld + (cellsize * 2), Yspeelveld + (cellsize * 2));
-            speelveld[2, 2] = new Steen(2, vak1, cellsize);
+            int eerste_x = (X_Vakjes / 2) - 1;
+            int eerste_y = (Y_Vakjes / 2) - 1;
+            Point vak1 = new Point(Xspeelveld + (cellsize * eerste_x), Yspeelveld + (cellsize * eerste_y));
+            speelveld[eerste_x, eerste_y] = new Steen(2, vak1, cellsize);
 
-            Point vak2 = new Point(Xspeelveld + (cellsize * 3), Yspeelveld + (cellsize * 2));
-            speelveld[3, 2] = new Steen(1, vak2, cellsize);
+            Point vak2 = new Point(Xspeelveld + (cellsize * (eerste_x+1)), Yspeelveld + (cellsize * eerste_y));
+            speelveld[eerste_x+1, eerste_y] = new Steen(1, vak2, cellsize);
 
-            Point vak3 = new Point(Xspeelveld + (cellsize * 2), Yspeelveld + (cellsize * 3));
-            speelveld[2, 3] = new Steen(1, vak3, cellsize);
+            Point vak3 = new Point(Xspeelveld + (cellsize * eerste_x), Yspeelveld + (cellsize * (eerste_y+1)));
+            speelveld[eerste_x, eerste_y+1] = new Steen(1, vak3, cellsize);
 
-            Point vak4 = new Point(Xspeelveld + (cellsize * 3), Yspeelveld + (cellsize * 3));
-            speelveld[3, 3] = new Steen(2, vak4, cellsize);
+            Point vak4 = new Point(Xspeelveld + (cellsize * (eerste_x+1)), Yspeelveld + (cellsize * (eerste_y+1)));
+            speelveld[eerste_x+1, eerste_y+1] = new Steen(2, vak4, cellsize);
 
-            //Point vak5 = new Point(Xspeelveld + (cellsize * 4), Yspeelveld + (cellsize * 2));
-            //speelveld[4, 2] = new Steen(1, vak5, cellsize);
+           
         }
 
         private void tekengrid(object sender, PaintEventArgs pea)
@@ -112,9 +148,9 @@ namespace reversi
             Graphics gr = pea.Graphics;
             Pen linepen = new Pen(Color.Black);
             
-            for (int x = Xspeelveld; x < 460; x += cellsize)
+            for (int x = Xspeelveld; x < X_Vakjes*cellsize+Xspeelveld; x += cellsize)
             {
-                for (int y = Yspeelveld; y < 560; y += cellsize)
+                for (int y = Yspeelveld; y < Y_Vakjes*cellsize+Yspeelveld; y += cellsize)
                 {
                     gr.DrawRectangle(linepen, x, y, cellsize, cellsize);
                 }
@@ -184,8 +220,18 @@ namespace reversi
 
                     this.update_steenlabels();
                     this.einde_beurt();
-                    
 
+                    if (is_er_een_winnaar())
+                    {
+                        this.einde_beurt();
+                        if (is_er_een_winnaar())
+                        {
+                            this.bepaal_winnaar();
+                        }
+                        else
+                            Label_Beurt.Text = "Geen geldige zetten, doe nog een zet.";
+                    }
+                    
                 }
                 else
                 {
@@ -235,6 +281,34 @@ namespace reversi
                 }
             Label_BlauweSteen.Text =  aantal_blauwestenen.ToString() + " stenen";
             Label_RodeSteen.Text = aantal_rodestenen.ToString() + " stenen";
+        }
+
+        private bool is_er_een_winnaar()
+        {
+            for (int x = 0; x < speelveld.GetLength(0); x++)
+                for (int y = 0; y < speelveld.GetLength(1); y++)
+                {
+                    if (is_geldige_zet(new Point(x,y)) == true)
+                    {
+                        return false;
+                    }
+                }
+            return true;
+        }
+        private void bepaal_winnaar()
+        {
+            string[] blauwe_stenen_string = Label_BlauweSteen.Text.Split(' ');
+            int blauwe_stenen = int.Parse(blauwe_stenen_string[0]);
+
+            string[] rode_stenen_string = Label_RodeSteen.Text.Split(' ');
+            int rode_stenen = int.Parse(rode_stenen_string[0]);
+
+            if (blauwe_stenen > rode_stenen)
+                Label_Beurt.Text = "Blauw is de winnaar";
+            else if (rode_stenen > blauwe_stenen)
+                Label_Beurt.Text = "Rood is de winnaar";
+            else if (rode_stenen == blauwe_stenen)
+                Label_Beurt.Text = "Remise";
         }
 
         private void check_and_flip(Point arraywaarde,int x_richting, int y_richting)
